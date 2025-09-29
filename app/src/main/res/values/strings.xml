@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">RedProxy</string>
+    <string name="start">Start</string>
+    <string name="restart">Restart</string>
+    <string name="stop">Stop</string>
+    <string name="check_ip">Check ip</string>
+    <string name="root">Waiting for root</string>
+    <string name="loading">Loading</string>
+    <string name="preparation">Preparation</string>
+    <string name="clear">Clear</string>
+</resources>
