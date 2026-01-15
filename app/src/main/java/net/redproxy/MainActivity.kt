@@ -176,12 +176,8 @@ class MainActivity : ComponentActivity() {
     }
 
     fun launch() = lifecycleScope.launch {
-        setProxyRedsocks(proxyString.value)
-        if (!running.value) {
-            enableRedsocks()
-        } else {
-            reloadRedsocks()
-        }
+        if (running.value) disableRedsocks()
+        enableRedsocks(proxyString.value)
         checkIsRunning()
         saveProxyString(proxyString.value)
         checkIp()

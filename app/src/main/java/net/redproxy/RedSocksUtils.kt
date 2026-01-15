@@ -77,7 +77,39 @@ fun prepareRedsocks(context: Context) {
     disableRedsocks()
 }
 
-fun enableRedsocks() {
+suspend fun enableRedsocks(proxy: String) {
+    val address = withContext(Dispatchers.IO) {
+        val match = Regex("^([\\w+]+)://((.*):(.*)@)?([^@]+):(\\d+)\$").matchEntire(proxy) ?: throw RuntimeException("Invalid proxy")
+        var type = match.groups[1]!!.value
+        if (!SUPPORTED_TYPES.contains(type)) throw RuntimeException("Invalid proxy")
+        val login = match.groups[3]?.value
+        val password = match.groups[4]?.value
+        val host = match.groups[5]!!.value
+        val port = match.groups[6]!!.value
+
+        val address = try {
+            InetAddress.getAllByName(host)[0].hostAddress!!
+        } catch (e: UnknownHostException) {
+            throw RuntimeException("Invalid proxy")
+        }
+
+        Log.e(BuildConfig.APPLICATION_ID, "${login} ${password} $host $address $port")
+
+        val config = if (login != null && password != null )
+            CONFIG_LOGIN_PASS
+                .replace("TYPE", type)
+                .replace("LOGIN", login)
+                .replace("PASSWORD", password)
+                .replace("IP", address)
+                .replace("PORT", port)
+        else
+            CONFIG
+                .replace("TYPE", type)
+                .replace("IP", address)
+                .replace("PORT", port)
+        SuUtil.exec2("rm /data/local/tmp/rs/redsocks2.conf;echo '${config}' > /data/local/tmp/rs/redsocks2.conf;chmod 777 /data/local/tmp/rs/redsocks2.conf")
+        address
+    }
     SuUtil.exec2("iptables -D OUTPUT -p udp -j REDSOCKS_F -w 2>/dev/null;" +
             "iptables -F REDSOCKS_F -w 2>/dev/null;" +
             "iptables -X REDSOCKS_F -w 2>/dev/null;" +
@@ -98,7 +130,7 @@ fun enableRedsocks() {
             "iptables -t nat -A REDSOCKS -d 192.168.0.0/16 -j RETURN -w;" +
             "iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN -w;" +
             "iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN -w;" +
-            "iptables -t nat -A REDSOCKS -d 43.159.20.117 -j RETURN -w;" +
+            "iptables -t nat -A REDSOCKS -d $address -j RETURN -w;" +
             "iptables -A REDSOCKS_F -p udp --dport 19302:19305 -j DROP -w;" +
             "iptables -A REDSOCKS_F -p udp --dport 3478 -j DROP -w;" +
             "iptables -A REDSOCKS_F -p udp --dport 5349 -j DROP -w;" +
@@ -113,11 +145,6 @@ fun isRunning(): Boolean {
     return SuUtil.exec2("pgrep -x redsocks2")[0] != null
 }
 
-fun reloadRedsocks() {
-    SuUtil.exec2("kill -9 \$(pgrep -x redsocks2)")
-    SuUtil.exec2("cd /data/local/tmp/rs;/data/local/tmp/rs/redsocks2 -x -c /data/local/tmp/rs/redsocks2.conf")
-}
-
 fun disableRedsocks() {
     SuUtil.exec2("iptables -D OUTPUT -p udp -j REDSOCKS_F -w 2>/dev/null;" +
             "iptables -F REDSOCKS_F -w 2>/dev/null;" +
@@ -127,35 +154,3 @@ fun disableRedsocks() {
             "iptables -t nat -X REDSOCKS -w 2>/dev/null")
     SuUtil.exec2("kill -9 \$(pgrep -x redsocks2)")
 }
-
-suspend fun setProxyRedsocks(proxy: String) { withContext(Dispatchers.IO) {
-    val match = Regex("^([\\w+]+)://((.*):(.*)@)?([^@]+):(\\d+)\$").matchEntire(proxy) ?: throw RuntimeException("Invalid proxy")
-    var type = match.groups[1]!!.value
-    if (!SUPPORTED_TYPES.contains(type)) throw RuntimeException("Invalid proxy")
-    val login = match.groups[3]?.value
-    val password = match.groups[4]?.value
-    val host = match.groups[5]!!.value
-    val port = match.groups[6]!!.value
-
-    val address = try {
-        InetAddress.getAllByName(host)[0].hostAddress!!
-    } catch (e: UnknownHostException) {
-        throw RuntimeException("Invalid proxy")
-    }
-
-    Log.e(BuildConfig.APPLICATION_ID, "${login} ${password} $host $address $port")
-
-    val config = if (login != null && password != null )
-        CONFIG_LOGIN_PASS
-            .replace("TYPE", type)
-            .replace("LOGIN", login)
-            .replace("PASSWORD", password)
-            .replace("IP", address)
-            .replace("PORT", port)
-    else
-        CONFIG
-            .replace("TYPE", type)
-            .replace("IP", address)
-            .replace("PORT", port)
-    SuUtil.exec2("rm /data/local/tmp/rs/redsocks2.conf;echo '${config}' > /data/local/tmp/rs/redsocks2.conf;chmod 777 /data/local/tmp/rs/redsocks2.conf")
-} }

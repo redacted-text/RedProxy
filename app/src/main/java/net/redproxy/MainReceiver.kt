@@ -18,13 +18,8 @@ class MainReceiver : BroadcastReceiver() {
             if (!isRunning()) prepareRedsocks(context)
             if (proxy == "" || proxy == "null") { disableRedsocks(); return@launch }
             try {
-                if (isRunning()) {
-                    setProxyRedsocks(proxy)
-                    reloadRedsocks()
-                } else {
-                    setProxyRedsocks(proxy)
-                    enableRedsocks()
-                }
+                if (isRunning()) disableRedsocks()
+                enableRedsocks(proxy)
             } catch (e: RuntimeException) {
                 disableRedsocks()
             }
